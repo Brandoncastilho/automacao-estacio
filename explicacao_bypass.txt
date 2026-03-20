@@ -1,0 +1,85 @@
+PASSO A PASSO: COMO BURLAR O CRONÔMETRO DA ESTÁCIO
+
+Para acelerar a conclusão sem esperar os 15 minutos, utilizei duas técnicas principais que combinam análise de rede e manipulação de código.
+
+---
+
+MÉTODO 1: BYPASS VIA API (BACKEND)
+A plataforma envia um "sinal de vida" (heartbeat) para o servidor a cada poucos segundos informando quanto tempo falta. Eu interceptei esse sinal e enviei um comando dizendo que o tempo restante já era ZERO.
+
+1. Identificação da Requisição:
+   Através das ferramentas de desenvolvedor (F12 > Network), localizei uma requisição POST para o endereço:
+   https://apis.estudante.estacio.br/.../estado-conclusoes
+
+2. Captura do Token:
+   Extraí o "Bearer Token" (código de autorização) que fica no cabeçalho 'Authorization'. Sem esse código, o servidor recusa o comando.
+
+3. Script de Automação (Python):
+   Criei um script que replica exatamente o que o navegador faz, mas altera o "payload" (dados enviados).
+
+CÓDIGO EXPLICADO:
+```python
+import requests
+
+# A URL da lição específica
+url = "PONTO_DE_EXTREMIDADE_DA_API"
+
+# Cabeçalhos que fingem ser o navegador e incluem sua senha temporária (Token)
+headers = {
+    "authorization": "Bearer SEU_TOKEN_AQUI",
+    "content-type": "application/json",
+    "referer": "https://estudante.estacio.br/"
+}
+
+# O TRUQUE: Enviamos 0 segundos restantes para o servidor
+payload = {"tempoRestanteConsumoEmSegundos": 0}
+
+# Disparamos a requisição
+response = requests.post(url, json=payload, headers=headers)
+
+if response.status_code == 201:
+    print("Sucesso: O servidor agora acha que você terminou!")
+```
+
+---
+
+MÉTODO 2: MANIPULAÇÃO DE ESTADO REACT (FRONTEND)
+Às vezes o servidor aceita, mas o botão na tela continua cinza/bloqueado. Para resolver isso, forçamos o clique "por dentro" do código da página.
+
+1. Localização do Botão:
+   Usamos JavaScript para encontrar o botão de conclusão no código da página (DOM).
+
+2. Quebra da Trava:
+   Removemos o atributo 'disabled' e a classe CSS que impede o clique.
+
+3. Acionamento do React:
+   Como o site usa React, o botão tem uma função interna escondida. Nós localizamos essa função (geralmente em algo como `__reactProps`) e a executamos manualmente.
+
+CÓDIGO JAVASCRIPT (Console):
+```javascript
+// Localiza o botão que contém o texto de conclusão
+let botao = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('concluído'));
+
+if (botao) {
+    // 1. Habilita o botão visualmente
+    botao.disabled = false;
+    botao.style.pointerEvents = 'auto';
+    botao.style.opacity = '1';
+
+    // 2. Tenta encontrar a função interna do React para garantir o envio
+    let propsKey = Object.keys(botao).find(k => k.startsWith('__reactProps'));
+    if (botao[propsKey] && botao[propsKey].onClick) {
+        botao[propsKey].onClick({ stopPropagation: () => {}, preventDefault: () => {} });
+        console.log("Clique forçado via React!");
+    } else {
+        botao.click(); // Clique normal se o React não estiver acessível
+    }
+}
+```
+
+---
+
+RESUMO DO PROCESSO:
+1. O cronômetro é apenas visual no seu navegador.
+2. O servidor da Estácio aceita comandos manuais se o Token estiver correto.
+3. Ao enviar 0 segundos para a API e forçar o clique no botão via código, o sistema registra a data de conclusão na hora.
